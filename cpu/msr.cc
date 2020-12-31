@@ -989,6 +989,7 @@ bx_bool BX_CPP_AttrRegparmN(2) BX_CPU_C::wrmsr(Bit32u index, Bit64u val_64)
       }
       // TODO: Handle other bits.
       BX_CPU_THIS_PTR msr.svm_vm_cr = val_64;
+      break;
     case BX_SVM_HSAVE_PA_MSR:
       if (! is_cpu_extension_supported(BX_ISA_SVM)) {
         BX_ERROR(("WRMSR SVM_HSAVE_PA_MSR: SVM support not enabled in the cpu model"));
@@ -999,7 +1000,6 @@ bx_bool BX_CPP_AttrRegparmN(2) BX_CPU_C::wrmsr(Bit32u index, Bit64u val_64)
       }
       BX_CPU_THIS_PTR msr.svm_hsave_pa = val_64;
       break;
-
 #endif
 
     case BX_MSR_EFER:
