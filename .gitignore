@@ -8,12 +8,13 @@
 *.log
 *.status
 
+.libs
+
 Makefile
 bochs
 bximage
 bxhub
 
-gui/.libs
 build/linux/bochs-dlx
 build/macosx/Info.plist
 build/win32/nsis/bochs.nsi
