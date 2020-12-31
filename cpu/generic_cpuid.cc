@@ -1337,6 +1337,11 @@ Bit32u bx_generic_cpuid_t::get_ext2_cpuid_features(void) const
   if (BX_CPUID_SUPPORT_ISA_EXTENSION(BX_ISA_TBM))
     features |= BX_CPUID_EXT2_TBM;
 
+#if BX_SUPPORT_SVM
+  if (BX_CPUID_SUPPORT_ISA_EXTENSION(BX_ISA_SVM))
+    features |= BX_CPUID_EXT2_SVM;
+#endif
+
   return features;
 }
 
