@@ -654,6 +654,10 @@ typedef struct
 
   Bit32u ia32_spec_ctrl; // SCA
 
+#if BX_SUPPORT_SVM
+  Bit64u svm_vm_cr;
+#endif
+
   /* TODO finish of the others */
 } bx_regs_msr_t;
 #endif

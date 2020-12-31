@@ -1409,6 +1409,13 @@ bx_bool BX_CPP_AttrRegparmN(1) BX_CPU_C::SetEFER(bx_address val_64)
     return 0;
   }
 
+#if BX_SUPPORT_SVM
+  if ((val_64 & BX_EFER_SVME_MASK) != 0 && (BX_CPU_THIS_PTR msr.svm_vm_cr & (1 << 4)) != 0) {
+    BX_ERROR(("SetEFER(0x%08x): attempt to enable SVM when VM_CR.SVMDIS = 1", val32));
+    return 0;
+  }
+#endif
+
 #if BX_SUPPORT_X86_64
   /* #GP(0) if changing EFER.LME when cr0.pg = 1 */
   if ((BX_CPU_THIS_PTR efer.get_LME() != ((val32 >> 8) & 1)) &&

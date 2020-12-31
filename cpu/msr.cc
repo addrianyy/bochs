@@ -360,6 +360,13 @@ bx_bool BX_CPP_AttrRegparmN(2) BX_CPU_C::rdmsr(Bit32u index, Bit64u *msr)
       break;
 
 #if BX_SUPPORT_SVM
+    case BX_SVM_VM_CR_MSR:
+      if (! is_cpu_extension_supported(BX_ISA_SVM)) {
+        BX_ERROR(("RDMSR BX_SVM_VM_CR_MSR: SVM support not enabled in the cpu model"));
+        return handle_unknown_rdmsr(index, msr);
+      }
+      val64 = BX_CPU_THIS_PTR msr.svm_vm_cr;
+      break;
     case BX_SVM_HSAVE_PA_MSR:
       if (! is_cpu_extension_supported(BX_ISA_SVM)) {
         BX_ERROR(("RDMSR SVM_HSAVE_PA_MSR: SVM support not enabled in the cpu model"));
@@ -965,6 +972,23 @@ bx_bool BX_CPP_AttrRegparmN(2) BX_CPU_C::wrmsr(Bit32u index, Bit64u val_64)
 #endif
 
 #if BX_SUPPORT_SVM
+    case BX_SVM_VM_CR_MSR:
+      if (! is_cpu_extension_supported(BX_ISA_SVM)) {
+        BX_ERROR(("WRMSR BX_SVM_VM_CR_MSR: SVM support not enabled in the cpu model"));
+        return handle_unknown_wrmsr(index, val_64);
+      }
+      if ((val_64 & ~(0b11111ull)) != 0) {
+        BX_ERROR(("WRMSR BX_SVM_VM_CR_MSR: Tried to set reserved bits"));
+        return 0;
+      }
+      if (BX_CPU_THIS_PTR msr.svm_vm_cr & (1 << 3)) {
+        // When this bit is set, writes to LOCK and SVMDIS are silently ignored. When this
+        // bit is clear, VM_CR bits 3 and 4 can be written.
+        Bit64u mask = (1 << 3) | (1 << 4);
+        val_64 = (val_64 & ~mask) | (BX_CPU_THIS_PTR msr.svm_vm_cr & mask);
+      }
+      // TODO: Handle other bits.
+      BX_CPU_THIS_PTR msr.svm_vm_cr = val_64;
     case BX_SVM_HSAVE_PA_MSR:
       if (! is_cpu_extension_supported(BX_ISA_SVM)) {
         BX_ERROR(("WRMSR SVM_HSAVE_PA_MSR: SVM support not enabled in the cpu model"));
@@ -975,6 +999,7 @@ bx_bool BX_CPP_AttrRegparmN(2) BX_CPU_C::wrmsr(Bit32u index, Bit64u val_64)
       }
       BX_CPU_THIS_PTR msr.svm_hsave_pa = val_64;
       break;
+
 #endif
 
     case BX_MSR_EFER:
