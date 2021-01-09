@@ -1131,6 +1131,11 @@ public: // for now...
   static jmp_buf jmp_buf_env;
   unsigned last_exception_type;
 
+#if BX_SUPPORT_SVM
+  long long svm_last_exception_vector;
+  long long svm_last_exception_errcode;
+#endif
+
   // Boundaries of current code page, based on EIP
   bx_address eipPageBias;
   Bit32u     eipPageWindowSize;
@@ -5115,6 +5120,7 @@ public: // for now...
   BX_SMF void SvmInterceptPAUSE(void);
   BX_SMF void VirtualInterruptAcknowledge(void);
   BX_SMF void register_svm_state(bx_param_c *parent);
+  BX_SMF void SvmFixupExitIntInfoForDfAndShutdown();
 #endif
 
 #if BX_CONFIGURE_MSRS

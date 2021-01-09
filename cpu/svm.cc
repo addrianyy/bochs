@@ -660,6 +660,8 @@ void BX_CPU_C::Svm_Vmexit(int reason, Bit64u exitinfo1, Bit64u exitinfo2)
 
   BX_CPU_THIS_PTR EXT = 0;
   BX_CPU_THIS_PTR last_exception_type = 0;
+  BX_CPU_THIS_PTR svm_last_exception_vector = -1;
+  BX_CPU_THIS_PTR svm_last_exception_errcode = -1;
 
 #if BX_DEBUGGER
   if (BX_CPU_THIS_PTR vmexit_break) {
@@ -722,6 +724,8 @@ bx_bool BX_CPU_C::SvmInjectEvents(void)
     // record exception the same way as BX_CPU_C::exception does
     BX_ASSERT(vector < BX_CPU_HANDLED_EXCEPTIONS);
     BX_CPU_THIS_PTR last_exception_type = exceptions_info[vector].exception_type;
+    BX_CPU_THIS_PTR svm_last_exception_vector = vector;
+    BX_CPU_THIS_PTR svm_last_exception_errcode = push_error ? error_code : -1;
   }
 
   ctrls->exitintinfo = ctrls->eventinj & ~0x80000000;
@@ -730,8 +734,31 @@ bx_bool BX_CPU_C::SvmInjectEvents(void)
   interrupt(vector, type, push_error, error_code);
 
   BX_CPU_THIS_PTR last_exception_type = 0; // error resolved
+  BX_CPU_THIS_PTR svm_last_exception_vector = -1;
+  BX_CPU_THIS_PTR svm_last_exception_errcode = -1;
 
   return 1;
+}
+
+void BX_CPU_C::SvmFixupExitIntInfoForDfAndShutdown()
+{
+  SVM_CONTROLS *ctrls = &BX_CPU_THIS_PTR vmcb.ctrls;
+
+  long long last_vector = BX_CPU_THIS_PTR svm_last_exception_vector;
+  long long last_errcode = BX_CPU_THIS_PTR svm_last_exception_errcode;
+
+  if (last_vector >= 0) {
+    ctrls->exitintinfo_error_code = 0;
+
+    ctrls->exitintinfo = (Bit32u)last_vector | (BX_HARDWARE_EXCEPTION << 8);
+    if (last_errcode >= 0) {
+      ctrls->exitintinfo_error_code = (Bit32u)last_errcode;
+
+      BX_CPU_THIS_PTR vmcb.ctrls.exitintinfo |= (1 << 11); // error code delivered
+    }
+  } else {
+    fprintf(stderr, "No last exception info??");
+  }
 }
 
 void BX_CPU_C::SvmInterceptException(unsigned type, unsigned vector, Bit16u errcode, bx_bool errcode_valid, Bit64u qualification)
@@ -756,20 +783,20 @@ void BX_CPU_C::SvmInterceptException(unsigned type, unsigned vector, Bit16u errc
     // [31:31] | interruption info valid
     //
 
-    // record IDT vectoring information 
+
     ctrls->exitintinfo_error_code = errcode;
     ctrls->exitintinfo = vector | (BX_HARDWARE_EXCEPTION << 8);
     if (errcode_valid)
       BX_CPU_THIS_PTR vmcb.ctrls.exitintinfo |= (1 << 11); // error code delivered
+
     return;
   }
 
-  BX_ERROR(("SVM VMEXIT: event vector 0x%02x type %d error code=0x%04x", vector, type, errcode));
+  if (vector == BX_DF_EXCEPTION) {
+    SvmFixupExitIntInfoForDfAndShutdown();
+  }
 
-  // VMEXIT is not considered to occur during event delivery if it results
-  // in a double fault exception that causes VMEXIT directly
-  if (vector == BX_DF_EXCEPTION)
-    BX_CPU_THIS_PTR in_event = 0; // clear in_event indication on #DF
+  BX_ERROR(("SVM VMEXIT: event vector 0x%02x type %d error code=0x%04x", vector, type, errcode));
 
   BX_CPU_THIS_PTR debug_trap = 0; // clear debug_trap field
   BX_CPU_THIS_PTR inhibit_mask = 0;

@@ -980,6 +980,11 @@ void BX_CPU_C::reset(unsigned source)
   BX_CPU_THIS_PTR EXT = 0;
   BX_CPU_THIS_PTR last_exception_type = 0;
 
+#if BX_SUPPORT_SVM
+  BX_CPU_THIS_PTR svm_last_exception_vector = -1;
+  BX_CPU_THIS_PTR svm_last_exception_errcode = -1;
+#endif
+
   // invalidate the code prefetch queue
   BX_CPU_THIS_PTR eipPageBias = 0;
   BX_CPU_THIS_PTR eipPageWindowSize = 0;

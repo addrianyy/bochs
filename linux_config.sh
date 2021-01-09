@@ -30,4 +30,5 @@ export CXXFLAGS
             --enable-show-ips \
             --prefix=/opt/bochs \
             --with-sdl2 \
+            --with-nogui \
             ${CONFIGURE_ARGS}

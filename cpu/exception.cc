@@ -951,7 +951,10 @@ void BX_CPU_C::exception(unsigned vector, Bit16u error_code)
 #endif
 #if BX_SUPPORT_SVM
   if (BX_CPU_THIS_PTR in_svm_guest) {
-    if (SVM_INTERCEPT(SVM_INTERCEPT0_SHUTDOWN)) Svm_Vmexit(SVM_VMEXIT_SHUTDOWN);
+    if (SVM_INTERCEPT(SVM_INTERCEPT0_SHUTDOWN)) {
+      SvmFixupExitIntInfoForDfAndShutdown();
+      Svm_Vmexit(SVM_VMEXIT_SHUTDOWN);
+    }
   }
 #endif
 #if BX_DEBUGGER
@@ -996,6 +999,11 @@ void BX_CPU_C::exception(unsigned vector, Bit16u error_code)
 
   BX_CPU_THIS_PTR last_exception_type = exception_type;
 
+#if BX_SUPPORT_SVM
+  BX_CPU_THIS_PTR svm_last_exception_vector = vector;
+  BX_CPU_THIS_PTR svm_last_exception_errcode = push_error ? error_code : -1;
+#endif
+
   if (real_mode()) {
     push_error = 0; // not INT, no error code pushed
     error_code = 0;
@@ -1004,6 +1012,11 @@ void BX_CPU_C::exception(unsigned vector, Bit16u error_code)
   interrupt(vector, BX_HARDWARE_EXCEPTION, push_error, error_code);
 
   BX_CPU_THIS_PTR last_exception_type = 0; // error resolved
+
+#if BX_SUPPORT_SVM
+  BX_CPU_THIS_PTR svm_last_exception_vector = -1;
+  BX_CPU_THIS_PTR svm_last_exception_errcode = -1;
+#endif
 
   longjmp(BX_CPU_THIS_PTR jmp_buf_env, 1); // go back to main decode loop
 }
